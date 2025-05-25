@@ -29,40 +29,33 @@ void lcd_init(void)
 void display_jpg_from_buf(const uint8_t *jpg_buf, size_t jpg_len)
 {
     // 1. 寫入 JPEG 到 /spiffs/tmp.jpg
-    const char *filepath = "/spiffs/tmp.jpg";
-    FILE *fp = fopen(filepath, "wb");
-    if (!fp) {
-        ESP_LOGE(TAG, "❌ 無法開啟圖片檔寫入: %s", filepath);
+    FILE *fp = fopen("/spiffs/tmp.jpg", "wb");
+    if (!fp)
+    {
+        ESP_LOGE(TAG, "❌ 無法開啟圖片檔寫入");
         return;
     }
 
     size_t written = fwrite(jpg_buf, 1, jpg_len, fp);
     fclose(fp);
-    ESP_LOGI(TAG, "📄 已寫入 %s: %d bytes", filepath, written);
+    ESP_LOGI(TAG, "📄 實際寫入 /spiffs/tmp.jpg 大小: %d bytes", written);
     if (written == 0) {
-        ESP_LOGE(TAG, "❌ 寫入為 0，放棄顯示圖片");
+        ESP_LOGE(TAG, "❌ 未寫入任何資料，終止");
         return;
     }
 
-    // 2. 再次確認實際檔案大小（用 fstat）
-    struct stat st;
-    if (stat(filepath, &st) == 0) {
-        ESP_LOGI(TAG, "📦 stat 確認檔案大小: %ld bytes", st.st_size);
-    } else {
-        ESP_LOGE(TAG, "❌ stat 檢查失敗");
-    }
-
-    // 3. 解碼並顯示圖片
+    // 2. 解碼顯示
     pixel_jpeg **pixels;
     int imageWidth, imageHeight;
-    esp_err_t res = decode_jpeg(&pixels, filepath, LCD_WIDTH, LCD_HEIGHT, &imageWidth, &imageHeight);
-    if (res == ESP_OK) {
-        ESP_LOGI(TAG, "✅ 解碼成功, 解析度 %dx%d", imageWidth, imageHeight);
+    if (decode_jpeg(&pixels, "/spiffs/tmp.jpg", LCD_WIDTH, LCD_HEIGHT, &imageWidth, &imageHeight) == ESP_OK)
+    {
         int offsetX = (LCD_WIDTH - imageWidth) / 2;
         int offsetY = (LCD_HEIGHT - imageHeight) / 2;
         uint16_t *line_buf = malloc(sizeof(uint16_t) * imageWidth);
-        for (int y = 0; y < imageHeight; y++) {
-            for (int x = 0; x < imageWidth; x++) {
+        for (int y = 0; y < imageHeight; y++)
+        {
+            for (int x = 0; x < imageWidth; x++)
+            {
                 line_buf[x] = pixels[y][x];
             }
             lcdDrawMultiPixels(&dev, offsetX, offsetY + y, imageWidth, line_buf);
@@ -70,7 +63,9 @@ void display_jpg_from_buf(const uint8_t *jpg_buf, size_t jpg_len)
         lcdDrawFinish(&dev);
         free(line_buf);
         release_image(&pixels, LCD_WIDTH, LCD_HEIGHT);
-    } else {
-        ESP_LOGE(TAG, "❌ JPEG 解碼失敗, decode_jpeg 回傳錯誤碼: %d", res);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "❌ JPEG 解碼失敗");
     }
 }
