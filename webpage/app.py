@@ -1,32 +1,43 @@
-from flask import Flask, request
+from flask import Flask, request, render_template
 import paho.mqtt.publish as publish
+import base64
 
 app = Flask(__name__)
 
 MQTT_BROKER = "test.mosquitto.org"
-MQTT_TOPIC = "esp32/test"
+TOPIC_TEXT = "esp32/test"
+TOPIC_IMAGE = "esp32/display/image"
+
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/send', methods=['POST'])
 def send_message():
     msg = request.form.get("msg")
-    if not msg:
-        return "No message sent", 400
+    file = request.files.get("image")
 
-    publish.single(MQTT_TOPIC, msg, hostname=MQTT_BROKER)
+    if msg:
+        publish.single(TOPIC_TEXT, msg, hostname=MQTT_BROKER)
 
-    return f'''
-        <p>✅ Message sent to MQTT: {msg}</p>
-        <a href="/"><button>Back to form</button></a>
-    '''
+    if file and file.filename:
+        image_data = file.read()
+        b64 = base64.b64encode(image_data).decode('utf-8')
+        publish.single(TOPIC_IMAGE, b64, hostname=MQTT_BROKER)
 
-@app.route('/')
-def index():
     return '''
-        <form method="POST" action="/send">
-            <input name="msg" placeholder="Enter message">
-            <button type="submit">Send to ESP32</button>
-        </form>
+        <p>✅ 訊息與圖片已送出（若有）</p>
+        <a href="/"><button>回到表單</button></a>
     '''
+
+# @app.route('/')
+# def index():
+#     return f'''
+#         <form method="POST" action="/send">
+#             <input name="msg" placeholder="Enter message">
+#             <button type="submit">Send to ESP32</button>
+#         </form>
+#     '''
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
