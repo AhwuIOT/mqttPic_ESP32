@@ -63,6 +63,6 @@ void app_main(void)
     nvs_flash_init();
     mount_spiffs();
     lcd_init();
-
+    
     wifi_init_sta();
 }

@@ -31,21 +31,22 @@ static void mqtt_event_handler_cb(void *handler_args, esp_event_base_t base, int
     {
         esp_mqtt_event_handle_t event = event_data;
 
-        // 將 topic 轉成 C 字串處理
+        // 將 topic 轉成 C 字串
         char topic[event->topic_len + 1];
         memcpy(topic, event->topic, event->topic_len);
         topic[event->topic_len] = '\0';
 
-        // 判斷是哪個 topic 來的
+        // 圖片處理
         if (strcmp(topic, "esp32/display/image") == 0)
         {
             ESP_LOGI(TAG, "收到圖片 base64 字串, 長度 %d", event->data_len);
 
+            // 原始字串複製
             char *b64_str = calloc(event->data_len + 1, 1);
             memcpy(b64_str, event->data, event->data_len);
             b64_str[event->data_len] = '\0';
 
-            // 移除非法 base64 字元
+            // 清除非 base64 合法字元
             char *cleaned_str = calloc(event->data_len + 1, 1);
             int j = 0;
             for (int i = 0; i < event->data_len; i++)
@@ -62,31 +63,34 @@ static void mqtt_event_handler_cb(void *handler_args, esp_event_base_t base, int
             cleaned_str[j] = '\0';
             free(b64_str);
 
-            // 解碼
-            size_t decoded_len = (j * 3 / 4) + 4; // ⚠️ 加保險空間
-            uint8_t *jpg_buf = malloc(decoded_len);
+            // base64 decode
+            size_t decoded_len = (j * 3 / 4) + 4;
+            uint8_t *img_buf = malloc(decoded_len);
             size_t actual_len = 0;
 
             int ret = mbedtls_base64_decode(
-                jpg_buf,
+                img_buf,
                 decoded_len,
                 &actual_len,
                 (const uint8_t *)cleaned_str,
                 strlen(cleaned_str));
+            free(cleaned_str);
 
             if (ret != 0)
             {
                 ESP_LOGE(TAG, "Base64 decode failed: -0x%x", -ret);
-                ESP_LOGI(TAG, "Cleaned base64 前50字元：%.*s", 50, cleaned_str);
+                free(img_buf);
+                return;
             }
-            else
-            {
-                ESP_LOGI(TAG, "解碼成功，長度 %d", actual_len);
-                display_jpg_from_buf(jpg_buf, actual_len);
-            }
-            free(cleaned_str);
-            free(jpg_buf);
+
+            ESP_LOGI(TAG, "解碼成功，長度 %d", actual_len);
+
+            // 顯示圖片（自動判斷 JPEG / PNG）
+            extern void display_img_from_buf(const uint8_t *buf, size_t len);
+            display_img_from_buf(img_buf, actual_len);
+            free(img_buf);
         }
+
         if (strcmp(topic, "esp32/test") == 0)
         {
             ESP_LOGI(TAG, "收到文字訊息: %.*s", event->data_len, event->data);
@@ -94,6 +98,7 @@ static void mqtt_event_handler_cb(void *handler_args, esp_event_base_t base, int
 
         break;
     }
+
     default:
         break;
     }

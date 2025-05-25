@@ -1,18 +1,18 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
 <head>
-    <title>MQTT Web Sender</title>
+    <title>ESP32 圖文傳送測試</title>
 </head>
 <body>
-    <h2>📨 發送訊息 / 圖片到 ESP32</h2>
+    <h2>發送訊息 / 圖片給 ESP32</h2>
     <form method="POST" action="/send" enctype="multipart/form-data">
-        <p>文字訊息：</p>
-        <input name="msg" placeholder="Enter message">
-        <br><br>
-        <p>上傳圖片：</p>
-        <input type="file" name="image">
-        <br><br>
-        <button type="submit">Send</button>
+        <label>文字訊息：</label><br>
+        <input type="text" name="msg"><br><br>
+
+        <label>圖片檔案（jpg / png 均可）：</label><br>
+        <input type="file" name="image"><br><br>
+
+        <button type="submit">🚀 發送</button>
     </form>
 </body>
 </html>
