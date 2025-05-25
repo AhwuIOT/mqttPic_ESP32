@@ -16,15 +16,18 @@ def index():
 def send_message():
     msg = request.form.get("msg")
     file = request.files.get("image")
-
+    
     if msg:
         publish.single(TOPIC_TEXT, msg, hostname=MQTT_BROKER)
 
     if file and file.filename:
         image_data = file.read()
-        b64 = base64.b64encode(image_data).decode('utf-8')
-        publish.single(TOPIC_IMAGE, b64, hostname=MQTT_BROKER)
+        b64 = base64.b64encode(image_data).decode('ascii')  # or 'utf-8'
 
+        # ✅ 去除換行與空白
+        b64_cleaned = b64.replace('\n', '').replace('\r', '').replace(' ', '')
+
+        publish.single(TOPIC_IMAGE, b64_cleaned, hostname=MQTT_BROKER)
     return '''
         <p>✅ 訊息與圖片已送出（若有）</p>
         <a href="/"><button>回到表單</button></a>

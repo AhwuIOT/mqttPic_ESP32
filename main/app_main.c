@@ -4,8 +4,10 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
-
+#include "lcd_display.h"
 #include "mqtt_handler.h"
+#include "esp_spiffs.h"
+
 
 #define WIFI_SSID "ahwufamily"
 #define WIFI_PASS "29670221"
@@ -23,6 +25,15 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI("WIFI", "Got IP, starting MQTT");
         mqtt_app_start(); // ✅ Wi-Fi 連上後才啟動 MQTT
     }
+}
+void mount_spiffs() {
+    esp_vfs_spiffs_conf_t conf = {
+        .base_path = "/spiffs",
+        .partition_label = NULL,
+        .max_files = 5,
+        .format_if_mount_failed = true
+    };
+    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
 }
 void wifi_init_sta(void)
 {
@@ -50,5 +61,8 @@ void wifi_init_sta(void)
 void app_main(void)
 {
     nvs_flash_init();
+    mount_spiffs();
+    lcd_init();
+
     wifi_init_sta();
 }
