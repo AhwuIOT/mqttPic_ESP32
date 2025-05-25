@@ -221,7 +221,7 @@ void lcdInit(TFT_t * dev, int width, int height, int offsetx, int offsety, bool 
 
 	spi_master_write_command(dev, 0x20);	//Display Inversion Off 
 
-	spi_master_write_command(dev, 0x36);	//Memory Data Access Control 
+	spi_master_write_command(dev, 0x08);	//Memory Data Access Control 
 	spi_master_write_data_byte(dev, 0xC8);	//BGR color filter panel
 	//spi_master_write_data_byte(dev, 0xC0);	//RGB color filter panel
 
