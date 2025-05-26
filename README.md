@@ -1,53 +1,117 @@
-| Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-H2 | ESP32-P4 | ESP32-S2 | ESP32-S3 | Linux |
-| ----------------- | ----- | -------- | -------- | -------- | -------- | --------- | -------- | -------- | -------- | -------- | ----- |
+# 🖼️ ESP32 MQTT Image Display with ST7735 TFT LCD
 
-# Hello World Example
+This project enables an **ESP32** to receive **Base64-encoded JPEG/PNG images over MQTT** and render them on a **1.8" ST7735 TFT LCD**. It also supports image caching using **SPIFFS**, so the last received image is automatically reloaded at boot.
 
-Starts a FreeRTOS task to print "Hello World".
+---
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+## 🔧 Hardware Connections
 
-## How to use example
+| LCD Pin | ESP32 GPIO |
+| ------- | ---------- |
+| VCC     | 3.3V       |
+| GND     | GND        |
+| CS      | GPIO5      |
+| RESET   | GPIO4      |
+| DC      | GPIO2      |
+| MOSI    | GPIO23     |
+| SCLK    | GPIO18     |
+| LED     | 3.3V       |
 
-Follow detailed instructions provided specifically for this example.
+> You can customize the pin configuration in `lcd_display.c`.
 
-Select the instructions depending on Espressif chip installed on your development board:
+---
 
-- [ESP32 Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/stable/get-started/index.html)
-- [ESP32-S2 Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/get-started/index.html)
-
-
-## Example folder contents
-
-The project **hello_world** contains one source file in C language [hello_world_main.c](main/hello_world_main.c). The file is located in folder [main](main).
-
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt` files that provide set of directives and instructions describing the project's source files and targets (executable, library, or both).
-
-Below is short explanation of remaining files in the project folder.
+## 📁 Project Structure (key files)
 
 ```
-├── CMakeLists.txt
-├── pytest_hello_world.py      Python script used for automated testing
-├── main
-│   ├── CMakeLists.txt
-│   └── hello_world_main.c
-└── README.md                  This is the file you are currently reading
+main/
+├── app_main.c          # Main entry: Wi-Fi, SPIFFS, LCD, MQTT
+├── mqtt_handler.c      # MQTT receive and Base64 decode
+├── lcd_display.c       # Image rendering logic (JPEG/PNG)
+├── decode_jpeg.c       # JPEG decoder using tjpgd
+├── decode_png.c        # PNG decoder using pngle
+├── pngle.c             # Lightweight PNG decoder
 ```
 
-For more information on structure and contents of ESP-IDF projects, please refer to Section [Build System](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html) of the ESP-IDF Programming Guide.
+---
 
-## Troubleshooting
+## 🚀 Getting Started
 
-* Program upload failure
+### 1. Configure Wi-Fi
 
-    * Hardware connection is not correct: run `idf.py -p PORT monitor`, and reboot your board to see if there are any output logs.
-    * The baud rate for downloading is too high: lower your baud rate in the `menuconfig` menu, and try again.
+In `app_main.c`:
 
-## Technical support and feedback
+```c
+#define WIFI_SSID "your_wifi_ssid"
+#define WIFI_PASS "your_wifi_password"
+```
 
-Please use the following feedback channels:
+### 2. MQTT Settings
 
-* For technical queries, go to the [esp32.com](https://esp32.com/) forum
-* For a feature request or bug report, create a [GitHub issue](https://github.com/espressif/esp-idf/issues)
+The client subscribes to the following topics:
 
-We will get back to you as soon as possible.
+```c
+#define MQTT_BROKER "mqtt://test.mosquitto.org"
+#define MQTT_TOPIC_IMAGE "ahwuesp32/display/image12345"
+#define MQTT_TOPIC_TEXT  "ahwuesp32/string12345"
+```
+
+### 3. Build & Flash
+
+```bash
+idf.py set-target esp32
+idf.py menuconfig   # ➤ Configure partition table (enable SPIFFS)
+idf.py build
+idf.py -p /dev/ttyUSB0 -b 460800 flash monitor
+```
+
+> Ensure your partition table supports SPIFFS and total Flash is set to **4MB**.
+
+---
+
+## 📤 Sending an Image (Python Example)
+
+```python
+import base64
+import paho.mqtt.publish as publish
+
+with open("image.jpg", "rb") as f:
+    b64_data = base64.b64encode(f.read()).decode()
+
+publish.single("ahwuesp32/display/image12345", b64_data, hostname="test.mosquitto.org")
+```
+
+> Recommended image size: **128x160 pixels**, and Base64 size should stay under **8000 characters**.
+
+---
+
+## 💾 SPIFFS Cache Behavior
+
+* Every received image is saved to `/spiffs/tmp.img`.
+* On boot, the system tries to reload and display this cached image.
+* To clear flash manually:
+
+```bash
+idf.py erase_flash
+```
+
+---
+
+## ⚠️ Notes
+
+* **Image format** is automatically detected as JPEG or PNG.
+* ST7735 is set to **BGR mode** by default. If you see wrong colors (e.g., red = blue), adjust the memory access control byte in `lcdInit()` (e.g., try `0xC0` for RGB).
+* Partial rendering is done line-by-line using `lcdDrawMultiPixels` for performance.
+
+---
+
+## 🔗 References
+
+* [ESP-IDF Docs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/)
+* [Mosquitto MQTT Broker](https://test.mosquitto.org/)
+* [tjpgd JPEG Decoder](http://elm-chan.org/fsw/tjpgd/00index.html)
+* [pngle PNG Decoder](https://github.com/kikuchan/pngle)
+
+---
+
+Would you like me to help format this into a `README.md` file for GitHub with badges and screenshots?

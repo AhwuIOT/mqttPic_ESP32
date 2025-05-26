@@ -8,11 +8,16 @@
 #include "mqtt_handler.h"
 #include "esp_spiffs.h"
 
-
 #define WIFI_SSID "ahwufamily"
 #define WIFI_PASS "29670221"
+#define MAX_WIFI_RETRY 5
 
 static const char *TAG = "APP_MAIN";
+static int s_retry_num = 0;
+static EventGroupHandle_t s_wifi_event_group;
+#define WIFI_CONNECTED_BIT BIT0
+#define WIFI_FAIL_BIT      BIT1
+
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data)
 {
@@ -20,12 +25,27 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
     {
         esp_wifi_connect();
     }
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
+    {
+        if (s_retry_num < MAX_WIFI_RETRY) {
+            esp_wifi_connect();
+            s_retry_num++;
+            ESP_LOGW(TAG, "Retrying to connect to WiFi... (%d/%d)", s_retry_num, MAX_WIFI_RETRY);
+        } else {
+            ESP_LOGE(TAG, "Failed to connect after %d attempts", MAX_WIFI_RETRY);
+            xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+        }
+    }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
-        ESP_LOGI("WIFI", "Got IP, starting MQTT");
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+        s_retry_num = 0;
+        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
         mqtt_app_start(); // ✅ Wi-Fi 連上後才啟動 MQTT
     }
 }
+
 void mount_spiffs() {
     esp_vfs_spiffs_conf_t conf = {
         .base_path = "/spiffs",
@@ -35,14 +55,17 @@ void mount_spiffs() {
     };
     ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
 }
+
 void wifi_init_sta(void)
 {
-    esp_netif_init();
-    esp_event_loop_create_default();
+    s_wifi_event_group = xEventGroupCreate();
+
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t wifi_cfg = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&wifi_cfg);
+    ESP_ERROR_CHECK(esp_wifi_init(&wifi_cfg));
 
     esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL);
@@ -53,10 +76,31 @@ void wifi_init_sta(void)
             .password = WIFI_PASS,
         },
     };
-    esp_wifi_set_mode(WIFI_MODE_STA);
-    esp_wifi_set_config(WIFI_IF_STA, &sta_cfg);
-    esp_wifi_start();
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_cfg));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
+    ESP_LOGI(TAG, "WiFi init finished, waiting for connection...");
+
+    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
+                                           WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+                                           pdFALSE,
+                                           pdFALSE,
+                                           pdMS_TO_TICKS(15000));  // 最多等 15 秒
+
+    if (bits & WIFI_CONNECTED_BIT) {
+        ESP_LOGI(TAG, "✅ Connected to AP successfully");
+    } else if (bits & WIFI_FAIL_BIT) {
+        ESP_LOGE(TAG, "❌ Failed to connect to AP. Restarting...");
+        vTaskDelay(pdMS_TO_TICKS(3000));
+        esp_restart();
+    } else {
+        ESP_LOGE(TAG, "❌ WiFi connection timeout. Restarting...");
+        vTaskDelay(pdMS_TO_TICKS(3000));
+        esp_restart();
+    }
 }
+
 void show_last_image_if_exists() {
     const char *img_path = "/spiffs/tmp.img";
 
@@ -89,9 +133,9 @@ void show_last_image_if_exists() {
 
 void app_main(void)
 {
-    nvs_flash_init();
+    ESP_ERROR_CHECK(nvs_flash_init());
     mount_spiffs();
     lcd_init();
-    show_last_image_if_exists(); 
+    show_last_image_if_exists();
     wifi_init_sta();
 }

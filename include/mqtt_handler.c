@@ -2,8 +2,6 @@
 #include "mqtt_client.h"
 #include "esp_log.h"
 #include "lcd_display.h"
-#define MQTT_BROKER "mqtt://test.mosquitto.org"
-#define MQTT_TOPIC "esp32/test"
 #include "mbedtls/base64.h"
 static const char *TAG = "MQTT_HANDLER";
 int mbedtls_base64_decode(
