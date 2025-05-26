@@ -1,0 +1,3 @@
+[submodule "mqttWebPage"]
+	path = mqttWebPage
+	url = https://github.com/AhwuIOT/mqttWebPage.git

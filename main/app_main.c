@@ -57,12 +57,41 @@ void wifi_init_sta(void)
     esp_wifi_set_config(WIFI_IF_STA, &sta_cfg);
     esp_wifi_start();
 }
+void show_last_image_if_exists() {
+    const char *img_path = "/spiffs/tmp.img";
+
+    FILE *fp = fopen(img_path, "rb");
+    if (!fp) {
+        ESP_LOGW("BOOT_IMAGE", "❗ 沒有上次圖片可顯示");
+        return;
+    }
+
+    // 讀出檔案內容
+    fseek(fp, 0, SEEK_END);
+    size_t size = ftell(fp);
+    rewind(fp);
+
+    uint8_t *buf = malloc(size);
+    if (!buf) {
+        ESP_LOGE("BOOT_IMAGE", "❌ 無法配置記憶體");
+        fclose(fp);
+        return;
+    }
+
+    fread(buf, 1, size, fp);
+    fclose(fp);
+
+    // 顯示
+    extern void display_img_from_buf(const uint8_t *buf, size_t len);
+    display_img_from_buf(buf, size);
+    free(buf);
+}
 
 void app_main(void)
 {
     nvs_flash_init();
     mount_spiffs();
     lcd_init();
-    
+    show_last_image_if_exists(); 
     wifi_init_sta();
 }

@@ -19,8 +19,8 @@ static void mqtt_event_handler_cb(void *handler_args, esp_event_base_t base, int
     {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "Connected to MQTT Broker");
-        esp_mqtt_client_subscribe(client, "esp32/test", 0);
-        esp_mqtt_client_subscribe(client, "esp32/display/image", 0);
+        esp_mqtt_client_subscribe(client, "ahwuesp32/string12345", 0);
+        esp_mqtt_client_subscribe(client, "ahwuesp32/display/image12345", 0);
         break;
     // case MQTT_EVENT_DATA:
     //     ESP_LOGI(TAG, "Received data:");
@@ -37,7 +37,7 @@ static void mqtt_event_handler_cb(void *handler_args, esp_event_base_t base, int
         topic[event->topic_len] = '\0';
 
         // 圖片處理
-        if (strcmp(topic, "esp32/display/image") == 0)
+        if (strcmp(topic, "ahwuesp32/display/image12345") == 0)
         {
             ESP_LOGI(TAG, "收到圖片 base64 字串, 長度 %d", event->data_len);
 
@@ -91,7 +91,7 @@ static void mqtt_event_handler_cb(void *handler_args, esp_event_base_t base, int
             free(img_buf);
         }
 
-        if (strcmp(topic, "esp32/test") == 0)
+        if (strcmp(topic, "ahwuesp32/string12345") == 0)
         {
             ESP_LOGI(TAG, "收到文字訊息: %.*s", event->data_len, event->data);
         }
