@@ -124,4 +124,3 @@ spiffs,     data, spiffs,          0x100000
 
 ---
 
-Would you like me to help format this into a `README.md` file for GitHub with badges and screenshots?
