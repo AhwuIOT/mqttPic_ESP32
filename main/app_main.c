@@ -8,8 +8,8 @@
 #include "mqtt_handler.h"
 #include "esp_spiffs.h"
 
-#define WIFI_SSID "ahwufamily"
-#define WIFI_PASS "29670221"
+#define WIFI_SSID "your_wifi_ssid"
+#define WIFI_PASS "your_wifi_password"
 #define MAX_WIFI_RETRY 5
 
 static const char *TAG = "APP_MAIN";

@@ -19,21 +19,7 @@ This project enables an **ESP32** to receive **Base64-encoded JPEG/PNG images ov
 
 > You can customize the pin configuration in `lcd_display.c`.
 
----
 
-## 📁 Project Structure (key files)
-
-```
-main/
-├── app_main.c          # Main entry: Wi-Fi, SPIFFS, LCD, MQTT
-├── mqtt_handler.c      # MQTT receive and Base64 decode
-├── lcd_display.c       # Image rendering logic (JPEG/PNG)
-├── decode_jpeg.c       # JPEG decoder using tjpgd
-├── decode_png.c        # PNG decoder using pngle
-├── pngle.c             # Lightweight PNG decoder
-```
-
----
 
 ## 🚀 Getting Started
 
@@ -52,8 +38,8 @@ The client subscribes to the following topics:
 
 ```c
 #define MQTT_BROKER "mqtt://test.mosquitto.org"
-#define MQTT_TOPIC_IMAGE "ahwuesp32/display/image12345"
-#define MQTT_TOPIC_TEXT  "ahwuesp32/string12345"
+#define MQTT_TOPIC_IMAGE "your_mqtt_photo_topic"
+#define MQTT_TOPIC_TEXT  "your_mqtt_string_topic"
 ```
 
 ### 3. Build & Flash
@@ -78,7 +64,7 @@ import paho.mqtt.publish as publish
 with open("image.jpg", "rb") as f:
     b64_data = base64.b64encode(f.read()).decode()
 
-publish.single("ahwuesp32/display/image12345", b64_data, hostname="test.mosquitto.org")
+publish.single("your_mqtt_photo_topic", b64_data, hostname="test.mosquitto.org")
 ```
 
 > Recommended image size: **128x160 pixels**, and Base64 size should stay under **8000 characters**.
@@ -95,7 +81,30 @@ publish.single("ahwuesp32/display/image12345", b64_data, hostname="test.mosquitt
 idf.py erase_flash
 ```
 
+
+## 📐 Partition Table Configuration
+
+This project requires a **custom partition table** to reserve space for both the application and SPIFFS filesystem. Use the following `partitions.csv` configuration:
+
+```
+# Name,     Type, SubType, Offset,  Size
+nvs,        data, nvs,     0x9000,  0x6000
+phy_init,   data, phy,     0xf000,  0x1000
+factory,    app,  factory, 0x10000, 1M
+spiffs,     data, spiffs,          0x100000
+```
+
+> 🛠️ You can specify this in `menuconfig`
+> `→ Partition Table → Custom partition table CSV`
+> Then point it to your custom `partitions.csv` file.
+
+### ⚠️ Flash Requirements
+
+* Total flash size must be **at least 4MB**
+* SPIFFS will store the most recent image as `/spiffs/tmp.img`
+
 ---
+
 
 ## ⚠️ Notes
 
@@ -111,6 +120,7 @@ idf.py erase_flash
 * [Mosquitto MQTT Broker](https://test.mosquitto.org/)
 * [tjpgd JPEG Decoder](http://elm-chan.org/fsw/tjpgd/00index.html)
 * [pngle PNG Decoder](https://github.com/kikuchan/pngle)
+* [esp-idf-m5stickC](https://github.com/nopnop2002/esp-idf-m5stickC)
 
 ---
 

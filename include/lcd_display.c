@@ -232,25 +232,25 @@ void display_img_from_buf(const uint8_t *buf, size_t len) {
     const char *path = "/spiffs/tmp.img";
     FILE *fp = fopen(path, "wb");
     if (!fp) {
-        ESP_LOGE(TAG, "❌ 無法寫入圖片檔");
+        ESP_LOGE(TAG, "❌ Unable to write image file");
         return;
     }
     size_t written = fwrite(buf, 1, len, fp);
     fclose(fp);
 
-    ESP_LOGI(TAG, "📄 已寫入圖片 %s 大小: %d bytes", path, written);
+    ESP_LOGI(TAG, "📄 Picture has been written %s sizes: %d bytes", path, written);
     if (written == 0) {
-        ESP_LOGE(TAG, "❌ 寫入為 0，放棄顯示圖片");
+        ESP_LOGE(TAG, "❌ Written as 0,not display the image");
         return;
     }
 
     if (is_jpeg(buf, len)) {
-        ESP_LOGI(TAG, "📸 圖片格式為 JPEG");
+        ESP_LOGI(TAG, "📸 The image format is JPEG");
         JPEGTest(&dev, (char *)path, LCD_WIDTH, LCD_HEIGHT);
     } else if (is_png(buf, len)) {
-        ESP_LOGI(TAG, "🖼️ 圖片格式為 PNG");
+        ESP_LOGI(TAG, "🖼️ The image format is PNG");
         PNGTest(&dev, (char *)path, LCD_WIDTH, LCD_HEIGHT);
     } else {
-        ESP_LOGW(TAG, "❌ 不支援的圖片格式");
+        ESP_LOGW(TAG, "❌ Unsupported image format.");
     }
 }
